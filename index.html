@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Tabel Transaksi Neon Blue Rupiah</title>
 <style>
-/* --- STYLING SAMA SEPERTI SEBELUMNYA --- */
 body{
   background:#dfdfe6;
   font-family:'Segoe UI',sans-serif;
@@ -46,7 +45,6 @@ input, select{
   box-shadow:0 0 10px rgba(50,150,255,0.4);
 }
 button{
-  /* grid-column: span 4; */
   background: linear-gradient(45deg,#3399ff,#66ccff);
   border:none;
   padding:10px;
@@ -109,14 +107,10 @@ tbody tr:hover{
   filter:brightness(1.2);
   box-shadow:0 0 20px rgba(0,200,255,0.5);
 }
-
-/* Styling untuk form bonus dan reset button di satu baris */
 #bonusForm {
   grid-template-columns: 1fr auto auto;
   gap: 10px;
 }
-
-/* Container dan styling untuk Mistake Periode */
 .mistake-container {
   width: 100%;
   max-width: 900px;
@@ -151,14 +145,12 @@ tbody tr:hover{
 <div class="container">
 <h2 style="background-color: rgb(207, 217, 220); padding: 10px 20px; border-radius: 15px;">𝐓𝐎𝐓𝐀𝐋 𝐌𝐈𝐒𝐓𝐀𝐊𝐄 𝐏𝐄𝐑𝐈𝐎𝐃𝐄 𝟏 𝐉𝐮𝐥𝐢 - 𝟑𝟎 𝐝𝐞𝐬𝐞𝐦𝐛𝐞𝐫 𝟐𝟎𝟐𝟓</h2>
 
-<!-- FORM BONUS GLOBAL -->
 <form id="bonusForm" style="margin-bottom:10px;">
   <input type="number" id="globalBonusInput" placeholder="Input Global Bonus (Rp)" required>
   <button type="submit">Simpan Bonus</button>
   <button type="button" id="resetAllBtn" style="background:#ff4d4d;">Reset All</button>
 </form>
 
-<!-- FORM TRANSAKSI -->
 <form id="txForm">
   <input type="date" id="date" required>
   <input type="text" id="type" placeholder="Transaction Type" required>
@@ -194,7 +186,6 @@ tbody tr:hover{
 </div>
 </div>
 
-<!-- CONTAINER MISTAKE PERIODE -->
 <div class="mistake-container">
   <h2>Mistake Periode</h2>
   <form id="mistakeForm">
@@ -255,6 +246,18 @@ const mistakeTotalCard = document.getElementById('mistakeTotalCard');
 
 let globalBonus = 0;
 let editKey = null;
+let totalMistake = 0;
+
+// --- FORMAT RUPIAH ---
+function formatRupiah(amount){
+  return 'Rp ' + Number(amount).toLocaleString('id-ID');
+}
+
+// --- TOTAL BERSIH ---
+function updateTotalBersih(){
+  const bersih = globalBonus - totalMistake;
+  totalBersihCard.textContent = `Total Bersih: ${formatRupiah(bersih)}`;
+}
 
 // --- FORM BONUS ---
 bonusForm.addEventListener('submit', e => {
@@ -280,28 +283,24 @@ txForm.addEventListener('submit', e => {
     dc: document.getElementById('dc').value,
     mistake: Number(document.getElementById('mistake').value) || 0
   };
-
   if(editKey){
     set(ref(db, 'transactions/' + editKey), dataObj);
     editKey = null;
   } else {
     push(txRef, dataObj);
   }
-
   txForm.reset();
 });
 
 // Listener transaksi realtime
 onValue(txRef, snap => {
   dataTable.innerHTML = '';
-  let totalMistake = 0;
-
+  totalMistake = 0;
   snap.forEach(child => {
     const key = child.key;
     const d = child.val();
     const mistakeValue = Number(d.mistake) || 0;
     totalMistake += mistakeValue;
-
     dataTable.innerHTML += `
       <tr>
         <td>${d.date}</td>
@@ -314,10 +313,19 @@ onValue(txRef, snap => {
         </td>
       </tr>`;
   });
-
   totalMistakeCard.textContent = `Total Mistakes: ${formatRupiah(totalMistake)}`;
-  updateTotalBersih(totalMistake);
+  updateTotalBersih();
 });
+
+// --- EDIT & DELETE TRANSAKSI ---
+window.deleteData = function(key){ remove(ref(db, 'transactions/' + key)); }
+window.editData = function(key,date,type,dc,mistake){
+  editKey = key;
+  document.getElementById('date').value = date;
+  document.getElementById('type').value = type;
+  document.getElementById('dc').value = dc;
+  document.getElementById('mistake').value = mistake;
+}
 
 // --- FORM MISTAKE PERIODE ---
 mistakeForm.addEventListener('submit', e => {
@@ -327,9 +335,7 @@ mistakeForm.addEventListener('submit', e => {
     periode: document.getElementById('mistakePeriode').value,
     total: Number(document.getElementById('mistakeTotal').value) || 0
   };
-
   push(mistakeRef, dataObj);
-
   mistakeForm.reset();
 });
 
@@ -338,13 +344,11 @@ onValue(mistakeRef, snap => {
   mistakeTable.innerHTML = '';
   let no = 1;
   let totalMistakePeriode = 0;
-
   snap.forEach(child => {
     const key = child.key;
     const d = child.val();
     const totalValue = Number(d.total) || 0;
     totalMistakePeriode += totalValue;
-
     mistakeTable.innerHTML += `
       <tr>
         <td>${no++}</td>
@@ -356,49 +360,23 @@ onValue(mistakeRef, snap => {
         </td>
       </tr>`;
   });
-
   mistakeTotalCard.textContent = `Total Mistake Selama Kerja: ${formatRupiah(totalMistakePeriode)}`;
 });
 
-// Fungsi hapus data mistake periode
+// Hapus Mistake Periode
 window.deleteMistakeData = function(key){
   if(confirm('Apakah Anda yakin ingin menghapus data mistake periode ini?')){
     remove(ref(db, 'mistakePeriode/' + key));
   }
 }
 
-// --- BANTUAN FORMAT ---
-function formatRupiah(amount){
-  return 'Rp ' + Number(amount).toLocaleString('id-ID');
-}
-
-// --- EDIT & DELETE TRANSAKSI ---
-window.deleteData = function(key){
-  remove(ref(db, 'transactions/' + key));
-}
-
-window.editData = function(key,date,type,dc,mistake){
-  editKey = key;
-  document.getElementById('date').value = date;
-  document.getElementById('type').value = type;
-  document.getElementById('dc').value = dc;
-  document.getElementById('mistake').value = mistake;
-}
-
-// --- RESET ALL BUTTON ---
+// --- RESET ALL ---
 const resetAllBtn = document.getElementById('resetAllBtn');
-
 resetAllBtn.addEventListener('click', () => {
   if(confirm('Apakah Anda yakin ingin mereset semua data?')) {
     set(txRef, null);
     set(bonusRef, 0);
     set(mistakeRef, null);
-    dataTable.innerHTML = '';
-    bonusCard.textContent = 'Bonus: Rp 0';
-    totalMistakeCard.textContent = 'Total Mistakes: Rp 0';
-    totalBersihCard.textContent = 'Total Bersih: Rp 0';
-    mistakeTable.innerHTML = '';
-    mistakeTotalCard.textContent = 'Total Mistake Selama Kerja: Rp 0';
   }
 });
 </script>
